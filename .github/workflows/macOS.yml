@@ -130,7 +130,7 @@ jobs:
 
       - name: make (boinc)
         run: |
-           cd prst/src/mac64 && make -f Makefile.boinc -j
+          cd prst/src/mac64 && make -f Makefile.boinc -j
           ./prst/src/mac64/prst
           ./prst/src/mac64/prst -h
 
