@@ -13,7 +13,7 @@ VPATH     = ..:../../framework:../../framework/arithmetic
 LFLAGS    =
 
 # uncomment if running into linker bug
-#LFLAGS   += -ld_classic
+LFLAGS   += -ld_classic
 
 DUMMY2    =
 LIBS2     = -lm -lpthread -lstdc++ ../../gmp/mac64/libgmp.a  # link against .a file directly to avoid using .dylib
@@ -23,8 +23,8 @@ CXX = clang++
 CFLAGS    = -I/usr/local/include/ -I.. -I../../framework/gwnum                                                -DGMP -DX86_64 -O2 -g -fno-limit-debug-info -std=c99     -Wall -Wextra
 CXXFLAGS  = -I/usr/local/include/ -I.. -I../../framework -I../../framework/arithmetic -I../../framework/gwnum -DGMP -DX86_64 -O2 -g -fno-limit-debug-info -std=gnu++17 -Wall -Wextra
 
-CFLAGS   += -target x86_64-apple-macos10.13 -v
-CXXFLAGS += -target x86_64-apple-macos10.13 -v
+CFLAGS   += -target x86_64-apple-macos10.13
+CXXFLAGS += -target x86_64-apple-macos10.13
 
 # asan flags
 #LFLAGS   += -fsanitize=address -fno-omit-frame-pointer
