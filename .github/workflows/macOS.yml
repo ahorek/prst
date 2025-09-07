@@ -43,6 +43,10 @@ jobs:
       - name: build boinc
         if: steps.cache-boinc-macIntel64.outputs.cache-hit != 'true'
         run: |
+          brew update
+          brew install llvm
+          export CC=/usr/local/opt/llvm/bin/clang
+          export CXX=/usr/local/opt/llvm/bin/clang++
           cd ./boinc/mac_build/
           source BuildMacBOINC.sh -lib
 
@@ -126,7 +130,12 @@ jobs:
         run: cp gwnum/gwnum.a prst/framework/gwnum/mac64/
 
       - name: make
-        run: cd prst/src/mac64 && make -j
+        run: |
+          brew update
+          brew install llvm
+          export CC=/usr/local/opt/llvm/bin/clang
+          export CXX=/usr/local/opt/llvm/bin/clang++
+          cd prst/src/mac64 && make -j
 
       - name: make (boinc)
         run: |

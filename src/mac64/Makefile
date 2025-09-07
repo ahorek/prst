@@ -18,8 +18,6 @@ LFLAGS   += -ld_classic
 DUMMY2    =
 LIBS2     = -lm -lpthread -lstdc++ ../../gmp/mac64/libgmp.a  # link against .a file directly to avoid using .dylib
 
-CC = clang
-CXX = clang++
 CFLAGS    = -I/usr/local/include/ -I.. -I../../framework/gwnum                                                -DGMP -DX86_64 -O2 -g -fno-limit-debug-info -std=c99     -Wall -Wextra
 CXXFLAGS  = -I/usr/local/include/ -I.. -I../../framework -I../../framework/arithmetic -I../../framework/gwnum -DGMP -DX86_64 -O2 -g -fno-limit-debug-info -std=gnu++17 -Wall -Wextra
 
