@@ -61,7 +61,7 @@ jobs:
       - name: LLVM
         run: |
           brew update
-          brew install llvm gnu-sed gmp
+          brew install llvm gnu-sed gmp autoconf automake libtool
 
       - name: Cache gwnum.a libs
         id: cache-gwnum-macIntel64
