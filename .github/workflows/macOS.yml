@@ -67,7 +67,7 @@ jobs:
           path: |
             gwnum/gwnum.a
             gwnum/polymult.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-macIntel64-${{ github.run_id }
+          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-macIntel64-${{ github.run_id }}
 
       - name: Download p95
         if: steps.cache-gwnum-macIntel64.outputs.cache-hit != 'true'
@@ -97,7 +97,7 @@ jobs:
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-macIntel64-${{ github.run_id }
+          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-macIntel64-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: Use cached gwnum
@@ -107,7 +107,7 @@ jobs:
           path: |
             gwnum/gwnum.a
             gwnum/polymult.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-macIntel64-${{ github.run_id }
+          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-macIntel64-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: install Homebrew
