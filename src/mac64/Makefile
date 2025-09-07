@@ -16,7 +16,7 @@ LFLAGS    =
 #LFLAGS   += -ld_classic
 
 DUMMY2    =
-LIBS2     = -lm -lpthread -lstdc++ /usr/local/lib/libgmp.a  # link against .a file directly to avoid using .dylib
+LIBS2     = -lm -lpthread -lstdc++ ../../gmp/mac64/libgmp.a  # link against .a file directly to avoid using .dylib
 
 CC = clang
 CXX = clang++
