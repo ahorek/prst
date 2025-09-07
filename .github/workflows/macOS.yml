@@ -58,6 +58,11 @@ jobs:
     runs-on: macos-13
 
     steps:
+      - name: LLVM
+        run: |
+          brew update
+          brew install llvm gnu-sed
+
       - name: Cache gwnum.a libs
         id: cache-gwnum-macIntel64
         uses: actions/cache@v3
@@ -89,6 +94,11 @@ jobs:
     runs-on: macos-13
 
     steps:
+      - name: LLVM
+        run: |
+          brew update
+          brew install llvm gnu-sed
+
       - name: Use cached BOINC libs
         id: cache-boinc
         uses: actions/cache@v3
