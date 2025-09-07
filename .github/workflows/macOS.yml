@@ -79,8 +79,9 @@ jobs:
         if: steps.cache-gwnum-macIntel64.outputs.cache-hit != 'true'
         run: |
           cd gwnum
-          /usr/local/opt/libtool/libexec/gnubin/sed -i '/^CPP *=/d' makemac
-          /usr/local/opt/libtool/libexec/gnubin/sed -i '/^CC *=/d' makemac
+          export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
+          gsed -i '/^CPP *=/d' makemac
+          gsed -i '/^CC *=/d' makemac
           make -f makemac -j gwnum.a polymult.a
 
   macIntel64:
