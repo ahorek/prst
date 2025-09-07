@@ -9,10 +9,6 @@ concurrency:
 env:
   boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635  # client release 7.20.2
   gwnum_ver: "v3019b21"
-  MACOSX_DEPLOYMENT_TARGET: "10.14"
-  CXX: g++
-  CC: gcc
-  CPP: g++
 
 jobs:
   boinc-macIntel64:
