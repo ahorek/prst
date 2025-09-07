@@ -10,20 +10,15 @@ env:
   boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635  # client release 7.20.2
   gwnum_ver: "v3019b21"
   MACOSX_DEPLOYMENT_TARGET: "10.14"
-  CXX: /usr/local/opt/llvm/bin/clang++
-  CC: /usr/local/opt/llvm/bin/clang
-  CPP: /usr/local/opt/llvm/bin/clang++
+  CXX: g++
+  CC: gcc
+  CPP: g++
 
 jobs:
   boinc-macIntel64:
     runs-on: macos-13
 
     steps:
-      - name: LLVM
-        run: |
-          brew update
-          brew install llvm gnu-sed
-
       - name: Cache BOINC libs
         id: cache-boinc-macIntel64
         uses: actions/cache@v3
@@ -61,7 +56,7 @@ jobs:
       - name: LLVM
         run: |
           brew update
-          brew install llvm gnu-sed gmp autoconf automake libtool
+          brew install gmp
 
       - name: Cache gwnum.a libs
         id: cache-gwnum-macIntel64
@@ -83,18 +78,6 @@ jobs:
       - name: build gwnum.a and polymult.a
         if: steps.cache-gwnum-macIntel64.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 https://github.com/gmp-mirror/gmp-6.3.git
-          cd gmp-6.3
-          ./.bootstrap
-          ./configure
-          make -j
-          make install
-          cd ..
-
-          cd gwnum
-          export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
-          gsed -i '/^CPP *=/d' makemac
-          gsed -i '/^CC *=/d' makemac
           make -f makemac -j gwnum.a polymult.a
 
   macIntel64:
@@ -102,11 +85,6 @@ jobs:
     runs-on: macos-13
 
     steps:
-      - name: LLVM
-        run: |
-          brew update
-          brew install llvm gnu-sed
-
       - name: Use cached BOINC libs
         id: cache-boinc
         uses: actions/cache@v3
