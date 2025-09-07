@@ -83,6 +83,14 @@ jobs:
       - name: build gwnum.a and polymult.a
         if: steps.cache-gwnum-macIntel64.outputs.cache-hit != 'true'
         run: |
+          git clone --depth 1 https://github.com/gmp-mirror/gmp-6.3.git
+          cd gmp-6.3
+          ./.bootstrap
+          ./configure
+          make -j
+          make install
+          cd ..
+
           cd gwnum
           export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
           gsed -i '/^CPP *=/d' makemac
