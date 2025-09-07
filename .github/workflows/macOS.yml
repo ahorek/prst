@@ -79,6 +79,7 @@ jobs:
       - name: build gwnum.a and polymult.a
         if: steps.cache-gwnum-macIntel64.outputs.cache-hit != 'true'
         run: |
+          cd gwnum
           make -f makemac -j gwnum.a polymult.a
 
   macIntel64:
