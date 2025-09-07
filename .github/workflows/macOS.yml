@@ -57,6 +57,7 @@ jobs:
         run: |
           brew update
           brew install gmp
+          gcc -v
 
       - name: Cache gwnum.a libs
         id: cache-gwnum-macIntel64
