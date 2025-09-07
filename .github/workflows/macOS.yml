@@ -9,6 +9,7 @@ concurrency:
 env:
   boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635  # client release 7.20.2
   gwnum_ver: "v3019b21"
+  MACOSX_DEPLOYMENT_TARGET: "10.14"
 
 jobs:
   boinc-macIntel64:
@@ -52,8 +53,7 @@ jobs:
       - name: LLVM
         run: |
           brew update
-          brew install gmp
-          gcc -v
+          brew reinstall gmp
 
       - name: Cache gwnum.a libs
         id: cache-gwnum-macIntel64
@@ -109,7 +109,7 @@ jobs:
         run: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
       - name: install deps (brew)
-        run: brew install gmp
+        run: brew reinstall gmp
 
       - name: remove dylib files (force static link)
         run: |
