@@ -129,7 +129,10 @@ jobs:
         run: cd prst/src/mac64 && make -j
 
       - name: make (boinc)
-        run: cd prst/src/mac64 && make -f Makefile.boinc -j
+        run: |
+           cd prst/src/mac64 && make -f Makefile.boinc -j
+          ./prst/src/mac64/prst
+          ./prst/src/mac64/prst -h
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -138,3 +141,4 @@ jobs:
           path: |
             prst/src/mac64/prst
             prst/src/mac64/prst_boinc
+            gwnum
