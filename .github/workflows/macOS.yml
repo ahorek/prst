@@ -136,6 +136,7 @@ jobs:
           export CC=/usr/local/opt/llvm/bin/clang
           export CXX=/usr/local/opt/llvm/bin/clang++
           cd prst/src/mac64 && make -j
+          ./prst
 
       - name: make (boinc)
         run: |
