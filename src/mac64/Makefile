@@ -13,7 +13,7 @@ VPATH     = ..:../../framework:../../framework/arithmetic
 LFLAGS    =
 
 # uncomment if running into linker bug
-LFLAGS   += -ld_classic
+LFLAGS   += -ld_classic -static
 
 DUMMY2    =
 LIBS2     = -lm -lpthread -lstdc++ ../../gmp/mac64/libgmp.a  # link against .a file directly to avoid using .dylib
