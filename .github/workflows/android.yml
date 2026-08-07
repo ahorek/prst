@@ -1,0 +1,259 @@
+name: Android build c1
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635
+  gwnum_ver: "v3107b01"
+  gwnum_ver_major: "31"
+  gwnum_ver_minor: "07"
+  NDK_VERSION: r29
+  NDK_HOME: ${{ github.workspace }}/ndk/android-ndk-r29
+
+jobs:
+  boinc-android:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Restore NDK
+        id: cache-ndk-android
+        uses: actions/cache@v5
+        with:
+          path: ndk
+          key: ndk-${{ runner.os }}-r29
+
+      - name: Install NDK
+        if: steps.cache-ndk-android.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ndk
+          cd ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -qq android-ndk-r29-linux.zip
+
+      - name: Cache BOINC libs
+        id: cache-boinc-android
+        uses: actions/cache@v5
+        with:
+          path: |
+            boinc/*.*
+            boinc/api
+            boinc/lib
+          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-android-clang
+
+      - name: Checkout BOINC
+        if: steps.cache-boinc-android.outputs.cache-hit != 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: BOINC/boinc
+          ref: ${{ env.boinc_ref }}
+          path: boinc
+
+      - name: Install deps
+        if: steps.cache-boinc-android.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            m4
+
+      - name: Build BOINC
+        if: steps.cache-boinc-android.outputs.cache-hit != 'true'
+        env:
+          TOOLCHAIN: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64
+          CC: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang
+          CXX: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++
+          AR: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          RANLIB: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          STRIP: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+        run: |
+          cd boinc
+
+          ./_autosetup
+
+          ./configure \
+            --disable-server \
+            --disable-client \
+            --disable-manager \
+            --enable-libraries \
+            --enable-static \
+            --disable-shared \
+            --host=aarch64-linux-android
+
+          make -j"$(nproc)"
+
+  gwnum:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Restore NDK
+        id: cache-ndk-android
+        uses: actions/cache@v5
+        with:
+          path: ndk
+          key: ndk-${{ runner.os }}-r29
+
+      - name: Install NDK
+        if: steps.cache-ndk-android.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ndk
+          cd ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -qq android-ndk-r29-linux.zip
+
+      - name: Cache gwnum.a libs
+        id: cache-gwnum-android
+        uses: actions/cache@v5
+        with:
+          path: |
+            gwnum_c1/gwnum.a
+          key: gwnum-${{ runner.os }}-${{ env.gwnum_ver }}-android-clang
+
+      - name: Install deps
+        if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build
+
+      - name: Download gwnum c1
+        if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/sam8641/gwnum_c1.git
+
+      - name: Build gwnum c1
+        if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
+        env:
+          NDK: ${{ env.NDK_HOME }}
+          TOOLCHAIN: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64
+        run: |
+          cd gwnum_c1
+
+          cmake -G Ninja -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-34 \
+            -DCMAKE_C_COMPILER="$TOOLCHAIN/bin/clang" \
+            -DCMAKE_CXX_COMPILER="$TOOLCHAIN/bin/clang++"
+
+          cmake --build build -j"$(nproc)"
+
+          mv build/libgwnum_c1_lib.a gwnum.a
+
+  android:
+    needs: [boinc-android, gwnum]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Restore NDK
+        id: cache-ndk-android
+        uses: actions/cache@v5
+        with:
+          path: ndk
+          key: ndk-${{ runner.os }}-r29
+
+      - name: Install NDK
+        if: steps.cache-ndk-android.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ndk
+          cd ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -qq android-ndk-r29-linux.zip
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgmp-dev
+
+      - name: Use cached BOINC libs
+        id: cache-boinc
+        uses: actions/cache@v5
+        with:
+          path: |
+            boinc/*.*
+            boinc/api
+            boinc/lib
+          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-android-clang
+          fail-on-cache-miss: true
+
+      - name: Use cached gwnum
+        id: cache-gwnum
+        uses: actions/cache@v5
+        with:
+          path: |
+            gwnum_c1/gwnum.a
+          key: gwnum-${{ runner.os }}-${{ env.gwnum_ver }}-android-clang
+          fail-on-cache-miss: true
+
+      - name: Checkout prst
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+          path: prst
+
+      - name: Copy gwnum
+        run: |
+          cp gwnum_c1/gwnum.a prst/framework/gwnum/linux64/
+
+      - name: Build GMP
+        env:
+          TOOLCHAIN: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64
+          CC: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang
+          CXX: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++
+          AR: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          RANLIB: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          STRIP: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+        run: |
+          git clone --depth 1 https://github.com/gmp-mirror/gmp-6.3.git
+          cd gmp-6.3
+          ./.bootstrap
+          ./configure --host=aarch64-linux-android --prefix=${GITHUB_WORKSPACE}/../gmp
+          make -j
+          make install
+          cp ${GITHUB_WORKSPACE}/../gmp/include/gmp.h ../prst/framework/gmp/gmp.h
+          cp ${GITHUB_WORKSPACE}/../gmp/lib/libgmp.a ../prst/framework/gmp/libgmp.a
+
+      - name: Make
+        env:
+          TOOLCHAIN: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64
+          CC: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang
+          CXX: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++
+          AR: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          RANLIB: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          STRIP: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+        run: |
+          cd prst/src/android
+          make -j"$(nproc)"
+
+      - name: Make (boinc)
+        env:
+          TOOLCHAIN: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64
+          CC: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang
+          CXX: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang++
+          AR: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          RANLIB: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+          STRIP: ${{ env.NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+        run: |
+          cd prst/src/android
+
+          make -f Makefile.boinc \
+            BOINC_DIR="$GITHUB_WORKSPACE/boinc" \
+            -j"$(nproc)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: android_bins
+          path: |
+            prst/src/android/prst
+            prst/src/android/prst_boinc
+            gwnum_c1/gwnum.a
+
