@@ -28,7 +28,6 @@ jobs:
           key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-linux64-clang-c1
 
       - name: Checkout boinc
-        if: steps.cache-boinc-linux64.outputs.cache-hit != 'true'
         uses: actions/checkout@v5
         with:
           repository: BOINC/boinc
@@ -36,7 +35,6 @@ jobs:
           path: boinc
 
       - name: Install deps
-        if: steps.cache-boinc-linux64.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -48,7 +46,6 @@ jobs:
             m4
 
       - name: Build boinc
-        if: steps.cache-boinc-linux64.outputs.cache-hit != 'true'
         env:
           CC: clang
           CXX: clang++
@@ -77,17 +74,14 @@ jobs:
           key: gwnum-${{ runner.os }}-${{ env.gwnum_ver }}-linux64-clang-c1
 
       - name: Install deps
-        if: steps.cache-gwnum-linux64-c1.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build
 
       - name: Download gwnum c1
-        if: steps.cache-gwnum-linux64-c1.outputs.cache-hit != 'true'
         run: git clone https://github.com/sam8641/gwnum_c1.git
 
       - name: Build gwnum c1
-        if: steps.cache-gwnum-linux64-c1.outputs.cache-hit != 'true'
         env:
           CC: clang
           CXX: clang++
@@ -95,6 +89,7 @@ jobs:
           cd gwnum_c1
           cmake -G Ninja -B build \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g"
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++
           cmake --build build -j 4

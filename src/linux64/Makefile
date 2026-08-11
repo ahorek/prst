@@ -19,8 +19,8 @@ LIBS2  = -lm -lpthread -lstdc++ -lgmp -static
 
 #CC  = gcc
 #CXX = g++
-CFLAGS   = -I.. -I../../framework/gwnum                                                -DGMP -DX86_64 -O2 -std=c99     -Wall -Wextra
-CXXFLAGS = -I.. -I../../framework -I../../framework/arithmetic -I../../framework/gwnum -DGMP -DX86_64 -O2 -std=gnu++17 -Wall -Wextra
+CFLAGS   = -I.. -I../../framework/gwnum                                                -g -DGMP -DX86_64 -O2 -std=c99     -Wall -Wextra
+CXXFLAGS = -I.. -I../../framework -I../../framework/arithmetic -I../../framework/gwnum -g -DGMP -DX86_64 -O2 -std=gnu++17 -Wall -Wextra
 # the code is too noisy for all warnings
 CXXFLAGS += -Wno-sign-compare -Wno-unused-parameter
 
