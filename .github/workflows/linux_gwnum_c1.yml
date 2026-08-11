@@ -89,7 +89,8 @@ jobs:
           cd gwnum_c1
           cmake -G Ninja -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g"
+            -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -g" \
+            -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -g" \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++
           cmake --build build -j 4
