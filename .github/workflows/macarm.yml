@@ -1,0 +1,217 @@
+name: macOS arm64 build c1
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635
+  gwnum_c1_repo: https://github.com/sam8641/gwnum_c1.git
+  gmp_ver: "6.3.0"
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+  cache_rev: "1"  # bump to invalidate all caches of this workflow
+
+jobs:
+  boinc-mac-arm64:
+    runs-on: macos-15
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
+
+    steps:
+      - name: Compute cache key
+        id: key
+        run: echo "key=boinc-${{ runner.os }}-${{ runner.arch }}-${{ env.boinc_ref }}-macos${{ env.MACOSX_DEPLOYMENT_TARGET }}-clang-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache BOINC libs
+        id: cache-boinc
+        uses: actions/cache@v5
+        with:
+          path: |
+            boinc/*.*
+            boinc/api
+            boinc/lib
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Checkout boinc
+        if: steps.cache-boinc.outputs.cache-hit != 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: BOINC/boinc
+          ref: ${{ env.boinc_ref }}
+          path: boinc
+
+      - name: Install deps
+        if: steps.cache-boinc.outputs.cache-hit != 'true'
+        run: brew install autoconf automake libtool pkg-config
+
+      - name: Build boinc
+        if: steps.cache-boinc.outputs.cache-hit != 'true'
+        env:
+          CC: clang
+          CXX: clang++
+          LIBTOOLIZE: glibtoolize
+        run: |
+          cd boinc
+          ./_autosetup
+          ./configure \
+            --disable-server \
+            --disable-client \
+            --disable-manager \
+            --enable-libraries \
+            --enable-static \
+            --disable-shared
+          make -j"$(sysctl -n hw.ncpu)"
+
+  gwnum:
+    runs-on: macos-15
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
+
+    steps:
+      - name: Compute cache key
+        id: key
+        run: |
+          sha=$(git ls-remote "$gwnum_c1_repo" HEAD | cut -f1)
+          test -n "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "key=gwnum-c1-${{ runner.os }}-${{ runner.arch }}-${sha}-macos${{ env.MACOSX_DEPLOYMENT_TARGET }}-clang-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache gwnum.a libs
+        id: cache-gwnum
+        uses: actions/cache@v5
+        with:
+          path: |
+            gwnum_c1/gwnum.a
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Install deps
+        if: steps.cache-gwnum.outputs.cache-hit != 'true'
+        run: brew install ninja
+
+      - name: Download gwnum c1
+        if: steps.cache-gwnum.outputs.cache-hit != 'true'
+        run: |
+          git clone "$gwnum_c1_repo" gwnum_c1
+          git -C gwnum_c1 checkout --detach "${{ steps.key.outputs.sha }}"
+
+      - name: Build gwnum c1
+        if: steps.cache-gwnum.outputs.cache-hit != 'true'
+        run: |
+          cd gwnum_c1
+          cmake -G Ninja -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET"
+          cmake --build build -j"$(sysctl -n hw.ncpu)"
+          mv build/libgwnum_c1_lib.a gwnum.a
+
+  gmp:
+    runs-on: macos-15
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
+
+    steps:
+      - name: Compute cache key
+        id: key
+        run: echo "key=gmp-${{ runner.os }}-${{ runner.arch }}-${{ env.gmp_ver }}-macos${{ env.MACOSX_DEPLOYMENT_TARGET }}-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache GMP
+        id: cache-gmp
+        uses: actions/cache@v5
+        with:
+          path: gmp
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Build GMP
+        if: steps.cache-gmp.outputs.cache-hit != 'true'
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          curl -fsSLO "https://ftp.gnu.org/gnu/gmp/gmp-${gmp_ver}.tar.xz"
+          tar xf "gmp-${gmp_ver}.tar.xz"
+          cd "gmp-${gmp_ver}"
+          ./configure --prefix="$GITHUB_WORKSPACE/gmp" --enable-static --disable-shared
+          make -j"$(sysctl -n hw.ncpu)"
+          make install
+
+  mac-arm64:
+    needs: [boinc-mac-arm64, gwnum, gmp]
+    runs-on: macos-15
+
+    steps:
+      - name: Use cached BOINC libs
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            boinc/*.*
+            boinc/api
+            boinc/lib
+          key: ${{ needs.boinc-mac-arm64.outputs.cache-key }}
+          fail-on-cache-miss: true
+
+      - name: Use cached gwnum
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            gwnum_c1/gwnum.a
+          key: ${{ needs.gwnum.outputs.cache-key }}
+          fail-on-cache-miss: true
+
+      - name: Use cached GMP
+        uses: actions/cache/restore@v5
+        with:
+          path: gmp
+          key: ${{ needs.gmp.outputs.cache-key }}
+          fail-on-cache-miss: true
+
+      - name: Checkout prst
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+          path: prst
+
+      - name: Copy gwnum
+        run: |
+          mkdir -p prst/framework/gwnum/mac-arm64
+          cp gwnum_c1/gwnum.a prst/framework/gwnum/mac-arm64/
+
+      - name: Make
+        run: |
+          cd prst/src/mac-arm64
+          make GMP_PREFIX="$GITHUB_WORKSPACE/gmp" -j"$(sysctl -n hw.ncpu)"
+
+      - name: Make (boinc)
+        run: |
+          cd prst/src/mac-arm64
+          make -f Makefile.boinc \
+            GMP_PREFIX="$GITHUB_WORKSPACE/gmp" \
+            BOINC_DIR="$GITHUB_WORKSPACE/boinc" \
+            -j"$(sysctl -n hw.ncpu)"
+
+      - name: Smoke test
+        run: |
+          cd prst/src/mac-arm64
+          for b in prst prst_boinc; do
+            file "$b" | grep -q 'arm64'
+            # only system libraries may be linked dynamically
+            ! otool -L "$b" | tail -n +2 | grep -v -e '/usr/lib/' -e '/System/Library/'
+            otool -l "$b" | grep -A3 LC_BUILD_VERSION | grep -q "minos $MACOSX_DEPLOYMENT_TARGET"
+          done
+          ./prst -v
+          ./prst_boinc -v
+          ./prst -log info "3*2^534+1" | tee proth.log
+          grep -q 'is prime!' proth.log
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: mac-arm64_bins
+          path: |
+            prst/src/mac-arm64/prst
+            prst/src/mac-arm64/prst_boinc
+            gwnum_c1/gwnum.a
