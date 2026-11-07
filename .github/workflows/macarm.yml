@@ -44,15 +44,15 @@ jobs:
 
       - name: Install deps
         if: steps.cache-boinc.outputs.cache-hit != 'true'
-        run: brew install autoconf automake libtool pkg-config
+        run: brew install autoconf automake libtool pkg-config gnu-sed llvm
 
       - name: Build boinc
         if: steps.cache-boinc.outputs.cache-hit != 'true'
         env:
           CC: clang
           CXX: clang++
-          LIBTOOLIZE: glibtoolize
         run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
           cd boinc
           ./_autosetup
           ./configure \
@@ -99,6 +99,7 @@ jobs:
       - name: Build gwnum c1
         if: steps.cache-gwnum.outputs.cache-hit != 'true'
         run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
           cd gwnum_c1
           cmake -G Ninja -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -132,6 +133,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
           curl -fsSLO "https://ftp.gnu.org/gnu/gmp/gmp-${gmp_ver}.tar.xz"
           tar xf "gmp-${gmp_ver}.tar.xz"
           cd "gmp-${gmp_ver}"
@@ -182,11 +184,13 @@ jobs:
 
       - name: Make
         run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
           cd prst/src/mac-arm64
           make GMP_PREFIX="$GITHUB_WORKSPACE/gmp" -j"$(sysctl -n hw.ncpu)"
 
       - name: Make (boinc)
         run: |
+          export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
           cd prst/src/mac-arm64
           make -f Makefile.boinc \
             GMP_PREFIX="$GITHUB_WORKSPACE/gmp" \
