@@ -8,31 +8,21 @@ concurrency:
 
 env:
   boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635
-  gwnum_ver: "v3107b01"
-  gwnum_ver_major: "31"
-  gwnum_ver_minor: "07"
+  gwnum_c1_repo: https://github.com/sam8641/gwnum_c1.git
+  cache_rev: "1"  # bump to invalidate all caches of this workflow
   NDK_VERSION: r29
   NDK_HOME: ${{ github.workspace }}/ndk/android-ndk-r29
 
 jobs:
   boinc-android:
     runs-on: ubuntu-24.04
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
-      - name: Restore NDK
-        id: cache-ndk-android
-        uses: actions/cache@v5
-        with:
-          path: ndk
-          key: ndk-${{ runner.os }}-r29
-
-      - name: Install NDK
-        if: steps.cache-ndk-android.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ndk
-          cd ndk
-          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
-          unzip -qq android-ndk-r29-linux.zip
+      - name: Compute cache key
+        id: key
+        run: echo "key=boinc-${{ runner.os }}-${{ env.boinc_ref }}-android34-ndk-${{ env.NDK_VERSION }}-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
 
       - name: Cache BOINC libs
         id: cache-boinc-android
@@ -42,7 +32,23 @@ jobs:
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-android-clang
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Restore NDK
+        id: cache-ndk-android
+        if: steps.cache-boinc-android.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ndk
+          key: ndk-${{ runner.os }}-${{ env.NDK_VERSION }}
+
+      - name: Install NDK
+        if: steps.cache-boinc-android.outputs.cache-hit != 'true' && steps.cache-ndk-android.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ndk
+          cd ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip
+          unzip -qq android-ndk-${NDK_VERSION}-linux.zip
 
       - name: Checkout BOINC
         if: steps.cache-boinc-android.outputs.cache-hit != 'true'
@@ -90,22 +96,17 @@ jobs:
 
   gwnum:
     runs-on: ubuntu-24.04
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
-      - name: Restore NDK
-        id: cache-ndk-android
-        uses: actions/cache@v5
-        with:
-          path: ndk
-          key: ndk-${{ runner.os }}-r29
-
-      - name: Install NDK
-        if: steps.cache-ndk-android.outputs.cache-hit != 'true'
+      - name: Compute cache key
+        id: key
         run: |
-          mkdir -p ndk
-          cd ndk
-          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
-          unzip -qq android-ndk-r29-linux.zip
+          sha=$(git ls-remote "$gwnum_c1_repo" HEAD | cut -f1)
+          test -n "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "key=gwnum-c1-${{ runner.os }}-${sha}-android34-ndk-${{ env.NDK_VERSION }}-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
 
       - name: Cache gwnum.a libs
         id: cache-gwnum-android
@@ -113,7 +114,23 @@ jobs:
         with:
           path: |
             gwnum_c1/gwnum.a
-          key: gwnum-${{ runner.os }}-${{ env.gwnum_ver }}-android-clang
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Restore NDK
+        id: cache-ndk-android
+        if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ndk
+          key: ndk-${{ runner.os }}-${{ env.NDK_VERSION }}
+
+      - name: Install NDK
+        if: steps.cache-gwnum-android.outputs.cache-hit != 'true' && steps.cache-ndk-android.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ndk
+          cd ndk
+          wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip
+          unzip -qq android-ndk-${NDK_VERSION}-linux.zip
 
       - name: Install deps
         if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
@@ -126,7 +143,8 @@ jobs:
       - name: Download gwnum c1
         if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/sam8641/gwnum_c1.git
+          git clone "$gwnum_c1_repo" gwnum_c1
+          git -C gwnum_c1 checkout --detach "${{ steps.key.outputs.sha }}"
 
       - name: Build gwnum c1
         if: steps.cache-gwnum-android.outputs.cache-hit != 'true'
@@ -158,15 +176,15 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ndk
-          key: ndk-${{ runner.os }}-r29
+          key: ndk-${{ runner.os }}-${{ env.NDK_VERSION }}
 
       - name: Install NDK
         if: steps.cache-ndk-android.outputs.cache-hit != 'true'
         run: |
           mkdir -p ndk
           cd ndk
-          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
-          unzip -qq android-ndk-r29-linux.zip
+          wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip
+          unzip -qq android-ndk-${NDK_VERSION}-linux.zip
 
       - name: Install deps
         run: |
@@ -175,22 +193,22 @@ jobs:
 
       - name: Use cached BOINC libs
         id: cache-boinc
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-android-clang
+          key: ${{ needs.boinc-android.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: Use cached gwnum
         id: cache-gwnum
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             gwnum_c1/gwnum.a
-          key: gwnum-${{ runner.os }}-${{ env.gwnum_ver }}-android-clang
+          key: ${{ needs.gwnum.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: Checkout prst
@@ -256,4 +274,3 @@ jobs:
             prst/src/android/prst
             prst/src/android/prst_boinc
             gwnum_c1/gwnum.a
-

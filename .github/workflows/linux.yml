@@ -11,12 +11,19 @@ env:
   gwnum_ver: "v3107b01"
   gwnum_ver_major: "31"
   gwnum_ver_minor: "07"
+  cache_rev: "1"  # bump to invalidate all caches of this workflow
 
 jobs:
   boinc-linux64:
     runs-on: ubuntu-24.04
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
+      - name: Compute cache key
+        id: key
+        run: echo "key=boinc-${{ runner.os }}-${{ runner.arch }}-${{ env.boinc_ref }}-linux64-gcc-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
       - name: Cache BOINC libs
         id: cache-boinc-linux64
         uses: actions/cache@v5
@@ -25,7 +32,7 @@ jobs:
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-linux64
+          key: ${{ steps.key.outputs.key }}
 
       - name: Checkout boinc
         if: steps.cache-boinc-linux64.outputs.cache-hit != 'true'
@@ -51,8 +58,14 @@ jobs:
 
   gwnum:
     runs-on: ubuntu-24.04
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
+      - name: Compute cache key
+        id: key
+        run: echo "key=gwnum-${{ runner.os }}-${{ runner.arch }}-${{ env.gwnum_ver }}-linux64-gcc-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
       - name: Cache gwnum.a libs
         id: cache-gwnum-linux64
         uses: actions/cache@v5
@@ -61,7 +74,7 @@ jobs:
             gwnum/*.h
             gwnum/gwnum.a
             gwnum/polymult.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-linux64
+          key: ${{ steps.key.outputs.key }}
 
       - name: Download p95
         if: steps.cache-gwnum-linux64.outputs.cache-hit != 'true'
@@ -84,24 +97,24 @@ jobs:
     steps:
       - name: Use cached BOINC libs
         id: cache-boinc
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-linux64
+          key: ${{ needs.boinc-linux64.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: Use cached gwnum
         id: cache-gwnum
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             gwnum/*.h
             gwnum/gwnum.a
             gwnum/polymult.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-linux64
+          key: ${{ needs.gwnum.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: install deps

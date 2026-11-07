@@ -8,15 +8,20 @@ concurrency:
 
 env:
   boinc_ref: 82d0a3731c743884b6e7a25d68c6558eca691635
-  gwnum_ver: "v3107b01"
-  gwnum_ver_major: "31"
-  gwnum_ver_minor: "07"
+  gwnum_c1_repo: https://github.com/sam8641/gwnum_c1.git
+  cache_rev: "1"  # bump to invalidate all caches of this workflow
 
 jobs:
   boinc-linux-aarch64:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
+      - name: Compute cache key
+        id: key
+        run: echo "key=boinc-${{ runner.os }}-${{ runner.arch }}-${{ env.boinc_ref }}-linux-aarch64-clang-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
       - name: Cache BOINC libs
         id: cache-boinc-linux-aarch64
         uses: actions/cache@v5
@@ -25,7 +30,7 @@ jobs:
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-linux-aarch64-clang
+          key: ${{ steps.key.outputs.key }}
 
       - name: Checkout boinc
         if: steps.cache-boinc-linux-aarch64.outputs.cache-hit != 'true'
@@ -66,15 +71,25 @@ jobs:
 
   gwnum:
     runs-on: ubuntu-24.04-arm
+    outputs:
+      cache-key: ${{ steps.key.outputs.key }}
 
     steps:
+      - name: Compute cache key
+        id: key
+        run: |
+          sha=$(git ls-remote "$gwnum_c1_repo" HEAD | cut -f1)
+          test -n "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "key=gwnum-c1-${{ runner.os }}-${{ runner.arch }}-${sha}-linux-aarch64-clang-v${{ env.cache_rev }}" >> "$GITHUB_OUTPUT"
+
       - name: Cache gwnum.a libs
         id: cache-gwnum-linux-aarch64
         uses: actions/cache@v5
         with:
           path: |
             gwnum_c1/gwnum.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-linux-aarch64-clang
+          key: ${{ steps.key.outputs.key }}
 
       - name: Install deps
         if: steps.cache-gwnum-linux-aarch64.outputs.cache-hit != 'true'
@@ -84,7 +99,9 @@ jobs:
 
       - name: Download gwnum c1
         if: steps.cache-gwnum-linux-aarch64.outputs.cache-hit != 'true'
-        run: git clone https://github.com/sam8641/gwnum_c1.git
+        run: |
+          git clone "$gwnum_c1_repo" gwnum_c1
+          git -C gwnum_c1 checkout --detach "${{ steps.key.outputs.sha }}"
 
       - name: Build gwnum c1
         if: steps.cache-gwnum-linux-aarch64.outputs.cache-hit != 'true'
@@ -114,22 +131,22 @@ jobs:
 
       - name: Use cached BOINC libs
         id: cache-boinc
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             boinc/*.*
             boinc/api
             boinc/lib
-          key: boinc-${{ runner.os }}-${{ env.boinc_ref }}-linux-aarch64-clang
+          key: ${{ needs.boinc-linux-aarch64.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: Use cached gwnum
         id: cache-gwnum
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             gwnum_c1/gwnum.a
-          key: gwmum-${{ runner.os }}-${{ env.gwnum_ver }}-linux-aarch64-clang
+          key: ${{ needs.gwnum.outputs.cache-key }}
           fail-on-cache-miss: true
 
       - name: Checkout prst
